@@ -105,7 +105,12 @@ def load_gemini_model(api_key):
 # Cached TTS Engine (using st.cache_resource)
 @st.cache_resource
 def load_tts_engine():
-    return pyttsx3.init()
+    try:
+        engine = pyttsx3.init('speechdispatcher') # Try speechdispatcher driver
+        return engine
+    except Exception as e:
+        st.error(f"Error initializing speechdispatcher TTS engine: {e}. Falling back to default.")
+        return pyttsx3.init() # Fallback to default if speechdispatcher fails
 
 # Initialize TTS engine globally using the cached function
 tts_engine = load_tts_engine()
