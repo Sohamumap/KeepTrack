@@ -12,7 +12,7 @@ import pyttsx3  # Import the text-to-speech library
 # Verify OpenCV version and basic functionality
 try:
     st.write(f"OpenCV version: {cv2.__version__}")  # Display OpenCV version
-    test_img = cv2.imread('streamlit_app/example_frame.png') # Try to read an image (you might need to add a dummy image file - see note below)
+    test_img = cv2.imread('example_frame.png.png') # Try to read an image (you might need to add a dummy image file - see note below)
     if test_img is not None:
         st.success("OpenCV imported and basic image read test successful!")
     else:
