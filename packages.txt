@@ -8,4 +8,4 @@ libglx-mesa0
 libx11-6
 libxext6
 libxrender1
-alsa-utils  # Add alsa-utils to try and fix 'aplay not found' error
+alsa-utils
