@@ -3,3 +3,4 @@ pandas
 google-generativeai
 Pillow
 xlsxwriter
+opencv-python  # Add this line
