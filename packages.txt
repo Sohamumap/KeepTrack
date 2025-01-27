@@ -1,4 +1,3 @@
-libgl1-mesa-glx
 speech-dispatcher  # Try this first for TTS
 mesa-utils
 libgl1-mesa-dri
