@@ -3,6 +3,6 @@ pandas
 google-generativeai
 Pillow
 xlsxwriter
-opencv-python==4.11.0.86  # Use specific older OpenCV version
-numpy==1.23.5          # Use specific older NumPy version
+opencv-python==4.8.0.74   # Revert back to your initially specified OpenCV version
+numpy==1.26.4           # Use NumPy 1.26.4 (compatible with OpenCV 4.8 and below 2.0)
 pyttsx3
