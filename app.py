@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import cv2
+# import cv2  <- OpenCV import is commented out
 import os
 import google.generativeai as genai
 from PIL import Image
@@ -40,6 +40,14 @@ def parse_csv_with_fixed_columns(csv_string, expected_columns):
              continue
 
     return records
+
+# Function to detect objects in a frame and draw bounding boxes
+# def process_frame_for_objects(frame, model): # <- Entire function commented out
+#     """
+#     Detects objects in a frame using Gemini and draws bounding boxes.
+#     ... (rest of the function code commented out)
+#     """
+#     pass # Placeholder to avoid syntax error
 
 # Configure page
 st.set_page_config(
@@ -183,7 +191,7 @@ with tab1:
                                     - Use commas only to separate fields rather than inside fileds.
                                     - Do not use commas in the item_description field.
                                     - For fields that inherently include commas, enclose the entire value in double quotes (`\"`).
-                                    - If double quotes appear within a field value, escape them by doubling them (`\"\"`). For example, `John \"JJ\" Smith` should be written as `\"John \"\"JJ\"\" Smith\"`.
+                                    - If double quotes appear within a field value, escape them by doubling them (`\"\"`). For example, `John \"JJ\" Smith` should be written as `\"John \"\"JJ\"\" Smith` should be written as `\"John \"\"JJ\"\" Smith\"`.
                                     - Do not use any unescaped double quotes or other special characters that may cause the CSV to be invalid.
                                     - Never use commas in prices. For example, $1500.0 = good, $1,500.0 = bad.
                                      - Return all columns in the order they are presented in.
@@ -389,16 +397,19 @@ with tab1:
                     frame_selection = st.slider("Select frame", 0, total_frames-1, 0)
 
                     # Display selected frame
-                    frame = st.session_state.frames[frame_selection]
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    frame = st.session_state.frames[frame_selection]['frame'] # Access 'frame' from dictionary
+                    # frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # <- cvtColor removed
+                    frame_rgb = frame # Display raw frame data directly - potentially BGR now.
                     st.image(frame_rgb, caption=f"Frame {frame_selection + 1} of {total_frames}")
 
                     # Display grid of frames
                     st.subheader("Frame Grid")
                     cols = st.columns(3)
-                    for idx, frame in enumerate(st.session_state.frames[:9]):  # Show first 9 frames
+                    for idx, frame_data in enumerate(st.session_state.frames[:9]):  # Show first 9 frames
                         with cols[idx % 3]:
-                            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                            frame = frame_data['frame'] # Access 'frame' from dictionary
+                            # frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # <- cvtColor removed
+                            frame_rgb = frame # Display raw frame data directly - potentially BGR now.
                             st.image(frame_rgb, caption=f"Frame {idx+1}")
                 except Exception as e:
                     st.error(f"Error processing frames: {e}")
