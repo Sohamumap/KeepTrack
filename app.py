@@ -9,6 +9,18 @@ import tempfile
 import io
 import pyttsx3  # Import the text-to-speech library
 
+# Verify OpenCV version and basic functionality
+try:
+    st.write(f"OpenCV version: {cv2.__version__}")  # Display OpenCV version
+    test_img = cv2.imread('streamlit_app/example_frame.png') # Try to read an image (you might need to add a dummy image file - see note below)
+    if test_img is not None:
+        st.success("OpenCV imported and basic image read test successful!")
+    else:
+        st.error("OpenCV import OK, but image read test FAILED.")
+except Exception as e:
+    st.error(f"Error importing or testing OpenCV: {e}")
+    st.stop() # Stop if OpenCV is not working
+
 # Helper to parse CSV
 def parse_csv_with_fixed_columns(csv_string, expected_columns):
     """
