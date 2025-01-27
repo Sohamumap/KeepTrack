@@ -2,5 +2,4 @@ streamlit
 pandas
 google-generativeai
 Pillow
-pyttsx3
 xlsxwriter
