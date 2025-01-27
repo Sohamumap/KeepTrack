@@ -1,2 +1,10 @@
 libgl1-mesa-glx
 speech-dispatcher  # Try this first for TTS
+mesa-utils
+libgl1-mesa-dri
+libglapi-mesa
+libglvnd0
+libglx-mesa0
+libx11-6
+libxext6
+libxrender1
