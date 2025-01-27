@@ -7,7 +7,7 @@ from PIL import Image
 import time
 import tempfile
 import io
-import pyttsx3  # Import the text-to-speech library
+# pyttsx3 import removed
 
 # Helper to parse CSV
 def parse_csv_with_fixed_columns(csv_string, expected_columns):
@@ -71,7 +71,7 @@ Upload a video and let AI help catalog your items for insurance or tracking purp
 - 💰 Estimate item values
 - 📊 View inventory statistics
 - ⬇️ Export data to CSV
-- 🗣️ Text-to-speech for item location
+- ~~🗣️ Text-to-speech for item location~~  *(Text-to-speech temporarily disabled for cloud deployment)*
 - 🔍 Find misplaced items in your video
 """)
 
@@ -93,8 +93,8 @@ with st.sidebar:
     2. Upload a video file
     3. Click "Process Video"
     4. View results in the tabs
-    5. Use "Find Item" tab to locate items (with voice output)
-    """)
+    5. Use "Find Item" tab to locate items
+    """) # Removed "(with voice output)" from instructions
 
 # Cached Gemini Model (using st.cache_resource)
 @st.cache_resource
@@ -102,13 +102,13 @@ def load_gemini_model(api_key):
     genai.configure(api_key=api_key) # Configure API here as well, just to be safe
     return genai.GenerativeModel('gemini-1.5-pro')
 
-# Cached TTS Engine (using st.cache_resource)
-@st.cache_resource
-def load_tts_engine():
-    return pyttsx3.init()
+# Cached TTS Engine removed
+# @st.cache_resource
+# def load_tts_engine():
+#     return pyttsx3.init()
 
-# Initialize TTS engine globally using the cached function
-tts_engine = load_tts_engine()
+# Initialize TTS engine globally using the cached function - removed
+# tts_engine = load_tts_engine()
 
 
 # Main content
@@ -413,8 +413,7 @@ with tab1:
             find_button = st.button("Find Location", use_container_width=True)
             location_output = st.empty() # Create an empty container to display location text
 
-            # Get the already initialized TTS engine from the cached function
-            engine = load_tts_engine() # Get cached TTS engine!
+            # TTS Engine related code removed from here
 
             if find_button and item_to_find and st.session_state.processed_video:
                 try:
@@ -446,12 +445,7 @@ with tab1:
                         location_output.success(f"Location of '{item_to_find}':") # Display success message in container
                         location_output.write(location_text) # Display location text in container
 
-                        # --- Text-to-speech implementation ---
-                        try: # Wrap TTS in try-except to isolate TTS errors
-                            engine.say(location_text) # Queue the text for speech
-                            engine.runAndWait() # Play the queued speech
-                        except Exception as tts_error:
-                            st.error(f"Text-to-speech error: {tts_error}") # Display TTS error, but don't break the app
+                        # TTS Text-to-speech implementation removed
 
                 except Exception as e:
                     location_output.error(f"Error finding item location: {str(e)}") # Display error in container
