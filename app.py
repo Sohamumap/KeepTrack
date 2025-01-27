@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-# import cv2  <- Commented out cv2 import
+import cv2
 import os
 import google.generativeai as genai
 from PIL import Image
@@ -41,82 +41,6 @@ def parse_csv_with_fixed_columns(csv_string, expected_columns):
 
     return records
 
-# Function to detect objects in a frame and draw bounding boxes
-# def process_frame_for_objects(frame, model):  <- Commented out function definition start
-#     """
-#     Detects objects in a frame using Gemini and draws bounding boxes.
-#
-#     Args:
-#         frame: OpenCV frame (numpy array).
-#         model: Gemini GenerativeModel.
-#
-#     Returns:
-#         Tuple: (Processed frame with bounding boxes, list of detections)
-#                Returns None, None if detection fails.
-#     """
-#     try:
-#         pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-#
-#         # Prompt for object detection with bounding boxes
-#         detection_prompt = """
-#             You are an expert in object detection. Analyze the image and identify all prominent objects in it that are typical household items or furniture.
-#             For each detected object, provide the label of the object and its bounding box coordinates in the format: x_min, y_min, x_max, y_max.
-#             Return the results as a CSV formatted string within <csv> and </csv> tags. The CSV should have the header: label,x_min,y_min,x_max,y_max
-#             For example:
-#             <csv>
-#             label,x_min,y_min,x_max,y_max
-#             couch,100,200,500,400
-#             table,250,300,600,550
-#             </csv>
-#             If no objects are detected, return an empty CSV within the tags, like this:
-#             <csv>
-#             label,x_min,y_min,x_max,y_max
-#             </csv>
-#         """
-#
-#         response = model.generate_content([pil_image, detection_prompt])
-#
-#         # Extract CSV data
-#         csv_data = None
-#         detections = []
-#         try:
-#             if "<csv>" in response.text and "</csv>" in response.text:
-#                 csv_text = response.text.split("<csv>")[1].split("</csv>")[0].strip()
-#                 if csv_text:  # Check if CSV content is not empty
-#                     detection_records = parse_csv_with_fixed_columns(csv_text, 5) # Expecting 5 columns now
-#                     for rec in detection_records:
-#                         try:
-#                             detections.append({
-#                                 'label': rec.get('label', 'unknown'),
-#                                 'bbox': [int(rec.get('x_min', 0)), int(rec.get('y_min', 0)), int(rec.get('x_max', 0)), int(rec.get('y_max', 0))] # Ensure bbox values are integers
-#                             })
-#                         except ValueError as e:
-#                             print(f"Error converting bbox values to int: {e}, record: {rec}")
-#                             continue # Skip this detection if bbox conversion fails
-#                 else:
-#                     print("No detections found in CSV data.") # Log if empty CSV
-#             else:
-#                 print("Could not find CSV tags in object detection response.") # Log if CSV tags missing
-#         except Exception as e:
-#             print(f"Error processing object detection CSV response: {e}")
-#             return None, None # Indicate failure to process detections
-#
-#         annotated_frame = frame.copy()
-#         for detection in detections:
-#             label = detection['label']
-#             bbox = detection['bbox']
-#             x_min, y_min, x_max, y_max = bbox
-#             cv2.rectangle(annotated_frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2) # Green bounding box
-#             cv2.putText(annotated_frame, label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2) # Green label
-#
-#         return annotated_frame, detections
-#
-#     except Exception as e:
-#         print(f"Error processing frame for object detection: {e}")
-#         return None, None
-# <- Commented out function definition end
-
-
 # Configure page
 st.set_page_config(
     page_title="KeepTrack - Video Item Inventory",
@@ -131,7 +55,7 @@ if 'processed_video' not in st.session_state:
 if 'inventory_df' not in st.session_state:
     st.session_state.inventory_df = None
 if 'frames' not in st.session_state:
-    st.session_state.frames = [] # Will now store dictionaries: {'frame': frame_array, 'detections': []}
+    st.session_state.frames = []
 if 'processing_complete' not in st.session_state:
     st.session_state.processing_complete = False
 
@@ -149,7 +73,6 @@ Upload a video and let AI help catalog your items for insurance or tracking purp
 - ⬇️ Export data to CSV
 - 🗣️ Text-to-speech for item location
 - 🔍 Find misplaced items in your video
-- 🖼️ **Object detection in video frames**
 """)
 
 # Sidebar for API key and configuration
@@ -171,7 +94,6 @@ with st.sidebar:
     3. Click "Process Video"
     4. View results in the tabs
     5. Use "Find Item" tab to locate items (with voice output)
-    6. See object detection in "Frames" tab
     """)
 
 # Cached Gemini Model (using st.cache_resource)
@@ -261,7 +183,7 @@ with tab1:
                                     - Use commas only to separate fields rather than inside fileds.
                                     - Do not use commas in the item_description field.
                                     - For fields that inherently include commas, enclose the entire value in double quotes (`\"`).
-                                    - If double quotes appear within a field value, escape them by doubling them (`\"\"`). For example, `John \"JJ\" Smith` should be written as `\"John \"\"JJ\"\" Smith` should be written as `\"John \"\"JJ\"\" Smith\"`.
+                                    - If double quotes appear within a field value, escape them by doubling them (`\"\"`). For example, `John \"JJ\" Smith` should be written as `\"John \"\"JJ\"\" Smith\"`.
                                     - Do not use any unescaped double quotes or other special characters that may cause the CSV to be invalid.
                                     - Never use commas in prices. For example, $1500.0 = good, $1,500.0 = bad.
                                      - Return all columns in the order they are presented in.
@@ -270,74 +192,59 @@ with tab1:
                                   Include a note to yourself in <other_details_to_note> if you think there are more items to continue doing in the video, this should be inline with the <item_logging_status> as well as the next steps to improve upon the record keeping.
                         """
 
-                        # Generate response for inventory
+                        # Generate response with progress bar
                         progress_bar = st.progress(0)
                         progress_text = st.empty()
 
-                        progress_text.text("Analyzing video for inventory...")
-                        progress_bar.progress(10)
+                        progress_text.text("Analyzing video...")
+                        progress_bar.progress(25)
 
-                        response_inventory = model.generate_content([video_file, prompt])
+                        response = model.generate_content([video_file, prompt])
 
                         progress_text.text("Extracting inventory data...")
-                        progress_bar.progress(20)
+                        progress_bar.progress(50)
 
                         # Debugging: Print the full response text
-                        print(f"Raw Gemini Response (Inventory Tab - Upload & Process): {response_inventory.text}")
+                        print(f"Raw Gemini Response (Inventory Tab - Upload & Process): {response.text}")
 
-                        # Extract CSV data for inventory
-                        csv_data_inventory = None
+                        # Extract CSV data
+                        csv_data = None
                         try:
-                            if "<csv>" in response_inventory.text and "</csv>" in response_inventory.text: # Changed delimiters here
-                                csv_data_inventory = response_inventory.text.split("<csv>")[1].split("</csv>")[0].strip() # Changed delimiters here
+                            if "<csv>" in response.text and "</csv>" in response.text: # Changed delimiters here
+                                csv_data = response.text.split("<csv>")[1].split("</csv>")[0].strip() # Changed delimiters here
                             else:
-                                st.error("Error: Could not find CSV inventory data in the AI response. Please check the API key and try again.")
-                                csv_data_inventory = None # Ensure csv_data is None to prevent further processing
+                                st.error("Error: Could not find CSV data in the AI response. Please check the API key and try again.")
+                                csv_data = None # Ensure csv_data is None to prevent further processing
                         except IndexError:
-                            st.error("Error processing AI response: Inventory CSV data extraction failed. The response format might be incorrect.")
-                            csv_data_inventory = None
+                            st.error("Error processing AI response: CSV data extraction failed. The response format might be incorrect.")
+                            csv_data = None
 
-                        print(f"Cleaned CSV Data (Inventory Tab - Upload & Process): {csv_data_inventory}")
+                        print(f"Cleaned CSV Data (Inventory Tab - Upload & Process): {csv_data}")
 
-                        if csv_data_inventory: # Only proceed if csv_data is successfully extracted
-                            progress_text.text("Processing frames...") #  Removed "and detecting objects..."
-                            progress_bar.progress(30)
+                        if csv_data: # Only proceed if csv_data is successfully extracted
+                            progress_text.text("Processing frames...")
+                            progress_bar.progress(75)
 
-                            # Convert inventory CSV to DataFrame
+                            # Convert to DataFrame
                             try:
-                                records = parse_csv_with_fixed_columns(csv_data_inventory, 7)
+                                records = parse_csv_with_fixed_columns(csv_data, 7)
                                 df = pd.DataFrame(records)
                                 st.session_state.inventory_df = df
                             except Exception as csv_parse_error:
-                                st.error(f"Error parsing Inventory CSV data: {csv_parse_error}")
+                                st.error(f"Error parsing CSV data: {csv_parse_error}")
                                 st.error("The CSV data from the AI might be malformed. Please check the API key and try again.")
                                 st.stop() # Stop further processing if CSV parsing fails
 
-                            # Extract frames and process for object detection
+                            # Extract frames
                             cap = cv2.VideoCapture(temp_path)
-                            frames_with_detections = []
-                            frame_count = 0
+                            frames = []
                             while cap.isOpened():
                                 ret, frame = cap.read()
                                 if not ret:
                                     break
-
-                                # if frame_count % 10 == 0: # Process every 10th frame for object detection (optimization) # <- Commented out conditional object detection processing
-                                #     processed_frame, detections = process_frame_for_objects(frame, model) # <- Commented out process_frame_for_objects call
-                                #     if processed_frame is not None:
-                                #         frames_with_detections.append({'frame': processed_frame, 'detections': detections})
-                                #     else:
-                                #         frames_with_detections.append({'frame': frame, 'detections': []}) # Store original frame if processing fails
-                                # else:
-                                #     frames_with_detections.append({'frame': frame, 'detections': []}) # Store original frame without processing
-                                frames_with_detections.append({'frame': frame, 'detections': []})  # Store original frame - always, no object detection now
-
-                                frame_count += 1
-                                progress_percent_frames = 30 + (frame_count / (cap.get(cv2.CAP_PROP_FRAME_COUNT) or 1)) * 50 # Track progress for frames
-                                progress_bar.progress(min(int(progress_percent_frames), 80)) # Cap at 80% until inventory processing complete
-
+                                frames.append(frame)
                             cap.release()
-                            st.session_state.frames = frames_with_detections # Store processed frames with detections
+                            st.session_state.frames = frames
 
                             progress_bar.progress(100)
                             progress_text.text("Processing complete!")
@@ -474,30 +381,27 @@ with tab1:
                     st.bar_chart(room_values)
 
         with tab3:
-            st.header("Video Frames") # Removed "with Object Detection"
+            st.header("Video Frames")
             if st.session_state.frames:
                 try:
                     # Add frame selection slider
                     total_frames = len(st.session_state.frames)
                     frame_selection = st.slider("Select frame", 0, total_frames-1, 0)
 
-                    # Display selected frame (NO bounding boxes now)
-                    frame_data = st.session_state.frames[frame_selection]
-                    frame_to_display = frame_data['frame'] # Use ORIGINAL frame now (no processing done)
-                    frame_rgb = cv2.cvtColor(frame_to_display, cv2.COLOR_BGR2RGB)
-                    st.image(frame_rgb, caption=f"Frame {frame_selection + 1} of {total_frames}") # Removed "(with object detection)" from caption
+                    # Display selected frame
+                    frame = st.session_state.frames[frame_selection]
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    st.image(frame_rgb, caption=f"Frame {frame_selection + 1} of {total_frames}")
 
-
-                    # Display grid of frames (using ORIGINAL frames - no boxes)
-                    st.subheader("Frame Grid") # Removed "with Object Detection"
+                    # Display grid of frames
+                    st.subheader("Frame Grid")
                     cols = st.columns(3)
-                    for idx, frame_data in enumerate(st.session_state.frames[:9]):  # Show first 9 frames
+                    for idx, frame in enumerate(st.session_state.frames[:9]):  # Show first 9 frames
                         with cols[idx % 3]:
-                            frame_to_display = frame_data['frame'] # Use ORIGINAL frame
-                            frame_rgb = cv2.cvtColor(frame_to_display, cv2.COLOR_BGR2RGB)
+                            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                             st.image(frame_rgb, caption=f"Frame {idx+1}")
                 except Exception as e:
-                    st.error(f"Error processing frames for display: {e}")
+                    st.error(f"Error processing frames: {e}")
             else:
               st.text("No frames were extracted from video.")
 
