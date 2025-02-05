@@ -8,16 +8,20 @@ import time
 import tempfile
 import io
 import pyttsx3  # Import the text-to-speech library
+import mediapipe as mp
+import numpy as np
+import playsound
+import threading
 
 # Configure page
 st.set_page_config(
-    page_title="KeepTrack - Video Item Inventory",
+    page_title="KeepTrack - Video Item Inventory & Fall Alert",
     page_icon="📹",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Helper to parse CSV
+# Helper to parse CSV (same as before)
 def parse_csv_with_fixed_columns(csv_string, expected_columns):
     """
     Parses a CSV string, handling irregularities, and returns a list of records.
@@ -49,8 +53,7 @@ def parse_csv_with_fixed_columns(csv_string, expected_columns):
 
     return records
 
-
-# Initialize session state
+# Initialize session state (same as before)
 if 'processed_video' not in st.session_state:
     st.session_state.processed_video = None
 if 'inventory_df' not in st.session_state:
@@ -60,26 +63,31 @@ if 'frames' not in st.session_state:
 if 'processing_complete' not in st.session_state:
     st.session_state.processing_complete = False
 
-# Title and description
-st.title("KeepTrack - Video Item Inventory")
+# Title and description (updated to include Fall Alert)
+st.title("KeepTrack - Video Item Inventory & Fall Alert")
 st.markdown("""
-This app helps you create an inventory of items from a video walkthrough of your space.
-Upload a video and let AI help catalog your items for insurance or tracking purposes.
+This app helps you create an inventory of items from a video walkthrough of your space **and now also features Fall Detection for safety monitoring.**
 
-### Features:
-- 📹 Process video content using AI
+### Inventory Features:
+- 📹 Process video content using AI for item inventory
 - 📝 Generate detailed inventory with item descriptions
 - 💰 Estimate item values
 - 📊 View inventory statistics
 - ⬇️ Export data to CSV
 - 🗣️ Text-to-speech for item location
 - 🔍 Find misplaced items in your video
+
+### New Fall Alert Feature:
+- 🚨 Real-time Fall Detection using webcam
+- 🔔 Audio and visual alerts upon fall detection
+- 🛡️ Proactive safety monitoring for homes and care environments
+
 """)
 
-# Sidebar for API key and configuration
+# Sidebar for API key and configuration (same as before)
 with st.sidebar:
     st.header("Configuration")
-    api_key = st.text_input("Enter your Gemini API Key", type="password", help="Get your API key from Google AI Studio")
+    api_key = st.text_input("Enter your Gemini API Key", type="password", help="Get your API key from Google AI Studio (required for Inventory features)")
     if api_key:
         try:
             genai.configure(api_key=api_key)
@@ -90,60 +98,70 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("""
     ### Instructions
+    **For Inventory Features:**
     1. Enter your Gemini API key
     2. Upload a video file
     3. Click "Process Video"
-    4. View results in the tabs
+    4. View results in the Inventory and Frames tabs
     5. Use "Find Item" tab to locate items (with voice output)
+
+    **For Fall Alert Feature:**
+    1. Go to the "Fall Alert" tab.
+    2. Ensure your webcam is accessible.
+    3. Click "Start Fall Detection" to begin monitoring.
     """)
 
-# Cached Gemini Model (using st.cache_resource)
+# Cached Gemini Model (using st.cache_resource) (same as before)
 @st.cache_resource
 def load_gemini_model(api_key):
     genai.configure(api_key=api_key) # Configure API here as well, just to be safe
     return genai.GenerativeModel('gemini-1.5-pro')
 
-# Cached TTS Engine (using st.cache_resource)
+# Cached TTS Engine (using st.cache_resource) (same as before)
 @st.cache_resource
 def load_tts_engine():
     return pyttsx3.init()
 
-# Initialize TTS engine globally using the cached function
+# Initialize TTS engine globally using the cached function (same as before)
 tts_engine = load_tts_engine()
 
 
-# Main content
-tab1, tab2, tab3, tab4 = st.tabs(["Upload & Process", "Inventory", "Frames", "Find Item"]) # Added tab4 "Find Item"
+# Main content tabs (Added "Fall Alert" tab)
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Upload & Process", "Inventory", "Frames", "Find Item", "Fall Alert"]) # Added tab5 "Fall Alert"
 
-with tab1:
+# Inventory Tabs (tab1, tab2, tab3, tab4) - same as before -  no changes here, just moved to different tab index
+with tab1: # Upload & Process Tab - Same as before
     st.header("Upload Video")
 
     # File uploader with clear instructions
     uploaded_file = st.file_uploader(
         "Choose a video file (MP4, MOV, or AVI)",
         type=['mp4', 'mov', 'avi'],
-        help="Maximum file size: 200MB"
+        help="Maximum file size: 200MB (Required for Inventory Features)"
     )
 
     if uploaded_file:
         # Show video details
-        file_details = {
-            "Filename": uploaded_file.name,
-            "File size": f"{uploaded_file.size / (1024*1024):.2f} MB",
-            "File type": uploaded_file.type
-        }
-        st.json(file_details)
+        file_details = st.expander("Video Details", expanded=False)
+        with file_details:
+            file_info = {
+                "Filename": uploaded_file.name,
+                "File size": f"{uploaded_file.size / (1024*1024):.2f} MB",
+                "File type": uploaded_file.type
+            }
+            st.json(file_info)
 
         # Create process button
         process_button = st.button(
-            "Process Video",
-            help="Click to start AI analysis of the video",
+            "Process Video (For Inventory)",
+            help="Click to start AI analysis of the video for item inventory",
             use_container_width=True
         )
 
         if process_button:
+            # ... (rest of the Process Video button logic - same as before)
             try:
-                with st.spinner("Processing video..."):
+                with st.spinner("Processing video for inventory..."): # Updated spinner message
                     # Create temporary file
                     with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
                         tmp_file.write(uploaded_file.getvalue())
@@ -197,7 +215,7 @@ with tab1:
                         progress_bar = st.progress(0)
                         progress_text = st.empty()
 
-                        progress_text.text("Analyzing video...")
+                        progress_text.text("Analyzing video for inventory...") # Updated progress text
                         progress_bar.progress(25)
 
                         response = model.generate_content([video_file, prompt])
@@ -223,7 +241,7 @@ with tab1:
                         print(f"Cleaned CSV Data (Inventory Tab - Upload & Process): {csv_data}")
 
                         if csv_data: # Only proceed if csv_data is successfully extracted
-                            progress_text.text("Processing frames...")
+                            progress_text.text("Processing frames for inventory...") # Updated progress text
                             progress_bar.progress(75)
 
                             # Convert to DataFrame
@@ -248,14 +266,14 @@ with tab1:
                             st.session_state.frames = frames
 
                             progress_bar.progress(100)
-                            progress_text.text("Processing complete!")
+                            progress_text.text("Inventory processing complete!") # Updated progress text
 
                             st.session_state.processing_complete = True
-                            st.success("Video processed successfully! Check the Inventory and Frames tabs for results.")
+                            st.success("Video processed successfully for inventory! Check the Inventory and Frames tabs for results.") # Updated success message
 
 
                     except Exception as e:
-                        st.error(f"Error processing video: {str(e)}")
+                        st.error(f"Error processing video for inventory: {str(e)}") # Updated error message
                         st.error("Please make sure your API key is valid and try again.")
 
                     finally:
@@ -266,193 +284,193 @@ with tab1:
             except Exception as e:
                 st.error(f"Error handling file: {str(e)}")
 
-        with tab2:
-            st.header("Inventory")
-            if st.session_state.inventory_df is not None:
-                # Add search/filter functionality
-                search_term = st.text_input("Search inventory", help="Filter items by name, category, or room")
+with tab2: # Inventory Tab - Same as before
+    st.header("Inventory")
+    if st.session_state.inventory_df is not None:
+        # Add search/filter functionality
+        search_term = st.text_input("Search inventory", help="Filter items by name, category, or room")
 
-                df = st.session_state.inventory_df
-                if search_term:
-                    mask = df.apply(lambda x: x.astype(str).str.contains(search_term, case=False)).any(axis=1)
-                    df = df[mask]
+        df = st.session_state.inventory_df
+        if search_term:
+            mask = df.apply(lambda x: x.astype(str).str.contains(search_term, case=False)).any(axis=1)
+            df = df[mask]
 
-                # **Debug: Print DataFrame info before data_editor**
-                print("DataFrame before data_editor in Inventory Tab:")
-                print(df.info())
-                print(df.head())
+        # **Debug: Print DataFrame info before data_editor**
+        print("DataFrame before data_editor in Inventory Tab:")
+        print(df.info())
+        print(df.head())
 
 
-                # **Robustly Convert 'value' column to numeric**
-                try:
-                    # 1. Ensure 'value' column is string type before using str accessor
-                    df['value'] = df['value'].astype(str)
+        # **Robustly Convert 'value' column to numeric**
+        try:
+            # 1. Ensure 'value' column is string type before using str accessor
+            df['value'] = df['value'].astype(str)
 
-                    # 2. Strip whitespace from the 'value' column first
-                    df['value'] = df['value'].str.strip()
+            # 2. Strip whitespace from the 'value' column first
+            df['value'] = df['value'].str.strip()
 
-                    # 3. Try converting to numeric, handling errors by coercing to NaN
-                    df['value'] = pd.to_numeric(df['value'], errors='coerce')
+            # 3. Try converting to numeric, handling errors by coercing to NaN
+            df['value'] = pd.to_numeric(df['value'], errors='coerce')
 
-                    # 4. Fill NaN values with 0 (or you could handle them differently)
-                    df['value'] = df['value'].fillna(0)
+            # 4. Fill NaN values with 0 (or you could handle them differently)
+            df['value'] = df['value'].fillna(0)
 
-                except Exception as conversion_error:
-                    st.warning(f"Error converting 'value' column to numbers: {conversion_error}. Ensure 'value' column contains numeric data. Error details: {conversion_error}") # More detailed warning
-                    df['value'] = 0  # If conversion completely fails, set to 0
+        except Exception as conversion_error:
+            st.warning(f"Error converting 'value' column to numbers: {conversion_error}. Ensure 'value' column contains numeric data. Error details: {conversion_error}") # More detailed warning
+            df['value'] = 0  # If conversion completely fails, set to 0
 
-                # Display inventory with editing capability
-                edited_df = st.data_editor(
-                    df,
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    column_config={
-                        "condition": st.column_config.SelectboxColumn( # Moved 'condition' column first for testing
-                            "Condition",
-                            options=["new", "excellent", "good", "fair", "poor"] # Simplified options for testing
-                        ),
-                        "value": st.column_config.NumberColumn(
-                            "Value ($)",
-                            help="Estimated value in USD",
-                            min_value=0,
-                            format="$%d"
-                        ),
+        # Display inventory with editing capability
+        edited_df = st.data_editor(
+            df,
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "condition": st.column_config.SelectboxColumn( # Moved 'condition' column first for testing
+                    "Condition",
+                    options=["new", "excellent", "good", "fair", "poor"] # Simplified options for testing
+                ),
+                "value": st.column_config.NumberColumn(
+                    "Value ($)",
+                    help="Estimated value in USD",
+                    min_value=0,
+                    format="$%d"
+                ),
 
-                    }
-                )
+            }
+        )
 
-                # Download options
-                col1, col2 = st.columns(2)
-                with col1:
-                    csv = edited_df.to_csv(index=False)
-                    st.download_button(
-                        "Download Inventory (CSV)",
-                        csv,
-                        "inventory.csv",
-                        "text/csv",
-                        key='download-csv',
-                        help="Download the inventory as a CSV file"
-                    )
+        # Download options
+        col1, col2 = st.columns(2)
+        with col1:
+            csv = edited_df.to_csv(index=False)
+            st.download_button(
+                "Download Inventory (CSV)",
+                csv,
+                "inventory.csv",
+                "text/csv",
+                key='download-csv',
+                help="Download the inventory as a CSV file"
+            )
 
-                with col2:
-                    # Export to Excel
-                    excel_buffer = pd.ExcelWriter('inventory.xlsx', engine='xlsxwriter')
-                    edited_df.to_excel(excel_buffer, index=False)
-                    excel_buffer.close()
+        with col2:
+            # Export to Excel
+            excel_buffer = pd.ExcelWriter('inventory.xlsx', engine='xlsxwriter')
+            edited_df.to_excel(excel_buffer, index=False)
+            excel_buffer.close()
 
-                    with open('inventory.xlsx', 'rb') as f:
-                        excel_data = f.read()
+            with open('inventory.xlsx', 'rb') as f:
+                excel_data = f.read()
 
-                    st.download_button(
-                        "Download Inventory (Excel)",
-                        excel_data,
-                        "inventory.xlsx",
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key='download-excel',
-                        help="Download the inventory as an Excel file"
-                    )
+            st.download_button(
+                "Download Inventory (Excel)",
+                excel_data,
+                "inventory.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key='download-excel',
+                help="Download the inventory as an Excel file"
+            )
 
-                # Summary statistics
-                st.subheader("Summary")
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Total Items", len(edited_df))
-                with col2:
-                    # **Now it should sum as numbers**
-                    st.metric("Total Value", f"${edited_df['value'].sum():,.2f}")
-                with col3:
-                    st.metric("Unique Categories", len(edited_df['category'].unique()))
-                with col4:
-                    st.metric("Rooms Covered", len(edited_df['room'].unique()))
+        # Summary statistics
+        st.subheader("Summary")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Items", len(edited_df))
+        with col2:
+            # **Now it should sum as numbers**
+            st.metric("Total Value", f"${edited_df['value'].sum():,.2f}")
+        with col3:
+            st.metric("Unique Categories", len(edited_df['category'].unique()))
+        with col4:
+            st.metric("Rooms Covered", len(edited_df['room'].unique()))
 
-                # Visualizations
-                st.subheader("Analysis")
-                tab_stats1, tab_stats2 = st.tabs(["Categories", "Values by Room"])
+        # Visualizations
+        st.subheader("Analysis")
+        tab_stats1, tab_stats2 = st.tabs(["Categories", "Values by Room"])
 
-                with tab_stats1:
-                    # Category breakdown
-                    st.subheader("Category Breakdown")
-                    cat_counts = edited_df['category'].value_counts()
-                    st.bar_chart(cat_counts)
+        with tab_stats1:
+            # Category breakdown
+            st.subheader("Category Breakdown")
+            cat_counts = edited_df['category'].value_counts()
+            st.bar_chart(cat_counts)
 
-                with tab_stats2:
-                    # Value by room
-                    st.subheader("Total Value by Room")
-                    room_values = edited_df.groupby('room')['value'].sum().sort_values(ascending=True)
-                    st.bar_chart(room_values)
+        with tab_stats2:
+            # Value by room
+            st.subheader("Total Value by Room")
+            room_values = edited_df.groupby('room')['value'].sum().sort_values(ascending=True)
+            st.bar_chart(room_values)
 
-        with tab3:
-            st.header("Video Frames")
-            if st.session_state.frames:
-                try:
-                    # Add frame selection slider
-                    total_frames = len(st.session_state.frames)
-                    frame_selection = st.slider("Select frame", 0, total_frames-1, 0)
+with tab3: # Frames Tab - Same as before
+    st.header("Video Frames")
+    if st.session_state.frames:
+        try:
+            # Add frame selection slider
+            total_frames = len(st.session_state.frames)
+            frame_selection = st.slider("Select frame", 0, total_frames-1, 0)
 
-                    # Display selected frame
-                    frame = st.session_state.frames[frame_selection]
+            # Display selected frame
+            frame = st.session_state.frames[frame_selection]
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            st.image(frame_rgb, caption=f"Frame {frame_selection + 1} of {total_frames}")
+
+            # Display grid of frames
+            st.subheader("Frame Grid")
+            cols = st.columns(3)
+            for idx, frame in enumerate(st.session_state.frames[:9]):  # Show first 9 frames
+                with cols[idx % 3]:
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    st.image(frame_rgb, caption=f"Frame {frame_selection + 1} of {total_frames}")
+                    st.image(frame_rgb, caption=f"Frame {idx+1}")
+        except Exception as e:
+            st.error(f"Error processing frames: {e}")
+    else:
+      st.text("No frames were extracted from video.")
 
-                    # Display grid of frames
-                    st.subheader("Frame Grid")
-                    cols = st.columns(3)
-                    for idx, frame in enumerate(st.session_state.frames[:9]):  # Show first 9 frames
-                        with cols[idx % 3]:
-                            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                            st.image(frame_rgb, caption=f"Frame {idx+1}")
-                except Exception as e:
-                    st.error(f"Error processing frames: {e}")
-            else:
-              st.text("No frames were extracted from video.")
+with tab4: # Find Item Tab - Same as before
+    st.header("Find Item Location")
+    st.markdown("Enter the name of the item you are looking for, and I will try to find it in the video.")
 
-        with tab4: # New "Find Item" Tab
-            st.header("Find Item Location")
-            st.markdown("Enter the name of the item you are looking for, and I will try to find it in the video.")
+    item_to_find = st.text_input("Item Name (e.g., spectacles, keys):", "")
+    find_button = st.button("Find Location", use_container_width=True)
+    location_output = st.empty() # Create an empty container to display location text
 
-            item_to_find = st.text_input("Item Name (e.g., spectacles, keys):", "")
-            find_button = st.button("Find Location", use_container_width=True)
-            location_output = st.empty() # Create an empty container to display location text
+    # Get the already initialized TTS engine from the cached function
+    engine = load_tts_engine() # Get cached TTS engine!
 
-            # Get the already initialized TTS engine from the cached function
-            engine = load_tts_engine() # Get cached TTS engine!
+    if find_button and item_to_find and st.session_state.processed_video:
+        try:
+            with st.spinner(f"Searching for '{item_to_find}'..."):
+                video_file = st.session_state.processed_video # Assuming you stored the video_file in session state
 
-            if find_button and item_to_find and st.session_state.processed_video:
-                try:
-                    with st.spinner(f"Searching for '{item_to_find}'..."):
-                        video_file = st.session_state.processed_video # Assuming you stored the video_file in session state
+                # --- NEW PROMPT FOR FINDING ITEM LOCATION ---
+                location_prompt = f"""
+                    You are an expert in analyzing home videos to find misplaced items.
+                    I will provide you with a video of a house walkthrough.
+                    The user is looking for their **{item_to_find}**.
 
-                        # --- NEW PROMPT FOR FINDING ITEM LOCATION ---
-                        location_prompt = f"""
-                            You are an expert in analyzing home videos to find misplaced items.
-                            I will provide you with a video of a house walkthrough.
-                            The user is looking for their **{item_to_find}**.
+                    Please analyze the video and describe the location of the **{item_to_find}** if you can find it.
+                    Be specific about its location relative to other objects in the scene.
+                    For example, "The spectacles are on the red table next to a newspaper."
 
-                            Please analyze the video and describe the location of the **{item_to_find}** if you can find it.
-                            Be specific about its location relative to other objects in the scene.
-                            For example, "The spectacles are on the red table next to a newspaper."
+                    If you cannot find the **{item_to_find}** in the video, please respond with "Item not found in the video."
 
-                            If you cannot find the **{item_to_find}** in the video, please respond with "Item not found in the video."
+                    Respond in a concise and user-friendly way.
+                """
 
-                            Respond in a concise and user-friendly way.
-                        """
+                model = load_gemini_model(api_key) # Get cached Gemini model
+                print(f"Sending Find Item request to Gemini API for item: {item_to_find}") # Debug print
+                location_response = model.generate_content([video_file, location_prompt])
+                print(f"Raw Gemini Response (Find Item Tab): {location_response}") # Debug print
+                print(f"Raw Gemini Response Text (Find Item Tab): {location_response.text}") # Debug print
+                location_text = location_response.text
 
-                        model = load_gemini_model(api_key) # Get cached Gemini model
-                        print(f"Sending Find Item request to Gemini API for item: {item_to_find}") # Debug print
-                        location_response = model.generate_content([video_file, location_prompt])
-                        print(f"Raw Gemini Response (Find Item Tab): {location_response}") # Debug print
-                        print(f"Raw Gemini Response Text (Find Item Tab): {location_response.text}") # Debug print
-                        location_text = location_response.text
+                location_output.success(f"Location of '{item_to_find}':") # Display success message in container
+                location_output.write(location_text) # Display location text in container
 
-                        location_output.success(f"Location of '{item_to_find}':") # Display success message in container
-                        location_output.write(location_text) # Display location text in container
-
-                        # --- Text-to-speech implementation ---
-                        try: # Wrap TTS in try-except to isolate TTS errors
-                            engine.say(location_text) # Queue the text for speech
-                            engine.runAndWait() # Play the queued speech
-                        except Exception as tts_error:
-                            st.error(f"Text-to-speech error: {tts_error}") # Display TTS error, but don't break the app
+                # --- Text-to-speech implementation ---
+                try: # Wrap TTS in try-except to isolate TTS errors
+                    engine.say(location_text) # Queue the text for speech
+                    engine.runAndWait() # Play the queued speech
+                except Exception as tts_error:
+                    st.error(f"Text-to-speech error: {tts_error}") # Display TTS error, but don't break the app
 
                 except Exception as e:
                     location_output.error(f"Error finding item location: {str(e)}") # Display error in container
@@ -460,11 +478,159 @@ with tab1:
             elif find_button and not st.session_state.processed_video:
                 location_output.warning("Please upload and process a video first in the 'Upload & Process' tab before using 'Find Item'.") # Display warning in container
 
+with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
+    st.header("Fall Alert System")
+    st.markdown("Click 'Start Fall Detection' to activate real-time fall monitoring using your webcam.")
 
-        # Footer
-        st.markdown("---")
-        st.markdown("""
-        <div style="text-align: center">
-            <p>Made with ❤️ using Streamlit and Google's Gemini AI</p>
-        </div>
-        """, unsafe_allow_html=True)
+    fall_detection_start = st.button("Start Fall Detection", use_container_width=True)
+    fall_detection_display = st.empty()  # Placeholder to display video frames
+
+    if fall_detection_start:
+        st.markdown("### Fall Detection Activated")
+        st.markdown("Monitoring for falls... Press 'q' on the video frame to stop.")
+
+        # Initialize MediaPipe Pose (moved inside tab for clarity)
+        mp_pose = mp.solutions.pose
+        mp_drawing = mp.solutions.drawing_utils
+        pose = mp_pose.Pose()
+
+        # Video capture - using webcam (0) - you might need to adjust index if you have multiple cameras
+        cap = cv2.VideoCapture(0) # Webcam capture here, inside the tab
+
+        # Parameters (Fall detection parameters - same as before)
+        GROUND_SMOOTHING = 0.9
+        FALL_THRESHOLD = 0.35
+        ANGLE_THRESHOLD = 35
+        FALL_DURATION = 1.5
+        STILL_FALL_DURATION = 5
+        NO_MOVEMENT_DURATION = 3
+        ALERT_SOUND = "alert.mp3" # Ensure 'alert.mp3' is in the same directory or provide full path
+        SITTING_ANGLE_THRESHOLD = 60
+
+        # Tracking variables (Fall detection tracking variables - same as before)
+        previous_ground_y = None
+        fall_start_time = None
+        still_fall_start_time = None
+        no_movement_start_time = None
+        fall_detected = False
+        previous_torso_y = None
+
+
+        def play_alert_sound(): # Fall Alert sound function - same as before
+            """Plays an alert sound in a separate thread."""
+            try:
+                playsound.playsound(ALERT_SOUND)
+            except Exception as e:
+                print("Sound error:", e)
+
+
+        while cap.isOpened(): # Fall detection loop - adapted for Streamlit
+            ret, frame = cap.read()
+            if not ret:
+                st.warning("Error reading video feed. Please check your webcam.")
+                break
+
+            # Fall detection processing (rest of the fall detection loop code - same as before, mostly)
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            result = pose.process(rgb_frame)
+            h, w, _ = frame.shape
+
+            ground_candidates = []
+            keypoints_on_ground = 0
+            total_keypoints = 0
+            torso_angle = None
+            torso_speed = 0
+
+            if result.pose_landmarks:
+                landmarks = result.pose_landmarks.landmark
+
+                # Identify ground level using ankle points
+                for i in [mp_pose.PoseLandmark.LEFT_ANKLE.value, mp_pose.PoseLandmark.RIGHT_ANKLE.value]:
+                    ground_candidates.append(int(landmarks[i].y * h))
+
+                # Smooth ground estimation
+                if ground_candidates:
+                    estimated_ground_y = int(np.median(ground_candidates))
+                    if previous_ground_y is None:
+                        previous_ground_y = estimated_ground_y
+                    else:
+                        previous_ground_y = int(GROUND_SMOOTHING * previous_ground_y + (1 - GROUND_SMOOTHING) * estimated_ground_y)
+
+                # Get torso keypoints
+                left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value]
+                right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value]
+                left_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP.value]
+                right_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value]
+
+                # Calculate torso angle
+                dx = (right_shoulder.x - left_shoulder.x) * w
+                dy = (right_shoulder.y - left_shoulder.y) * h
+                if dx != 0:
+                    torso_angle = np.degrees(np.arctan(abs(dy / dx)))
+
+                # Count keypoints near the ground
+                for i in range(len(landmarks)):
+                    x, y = int(landmarks[i].x * w), int(landmarks[i].y * h)
+                    total_keypoints += 1
+                    if y >= previous_ground_y:
+                        keypoints_on_ground += 1
+                        cv2.circle(frame, (x, y), 6, (0, 0, 255), -1)  # Red for ground contact
+                    else:
+                        cv2.circle(frame, (x, y), 6, (0, 255, 0), -1)  # Green for normal keypoints
+
+                # Check if the person is lying down (fall position)
+                is_lying_down = torso_angle is not None and torso_angle < ANGLE_THRESHOLD
+                is_sitting = torso_angle is not None and torso_angle > SITTING_ANGLE_THRESHOLD
+
+                # Detect fall based on motion and position (excluding sitting)
+                if keypoints_on_ground / total_keypoints > FALL_THRESHOLD and is_lying_down and not is_sitting:
+                    if not fall_detected:
+                        fall_start_time = time.time()
+                        fall_detected = True
+                    elif time.time() - fall_start_time >= FALL_DURATION:
+                        cv2.putText(frame, "FALL DETECTED!", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
+                        threading.Thread(target=play_alert_sound, daemon=True).start()
+
+                # If a person has already fallen and remains still
+                elif fall_detected and is_lying_down:
+                    if still_fall_start_time is None:
+                        still_fall_start_time = time.time()
+                    elif time.time() - still_fall_start_time >= STILL_FALL_DURATION:
+                        cv2.putText(frame, "PERSON STILL LYING DOWN!", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
+                        threading.Thread(target=play_alert_sound, daemon=True).start()
+
+                    # Detect no movement after falling
+                    if no_movement_start_time is None:
+                        no_movement_start_time = time.time()
+                    elif time.time() - no_movement_start_time >= NO_MOVEMENT_DURATION:
+                        cv2.putText(frame, "NO MOVEMENT DETECTED!", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
+                        threading.Thread(target=play_alert_sound, daemon=True).start()
+                else:
+                    fall_detected = False
+                    fall_start_time = None
+                    still_fall_start_time = None
+                    no_movement_start_time = None
+
+            # Draw ground reference
+            cv2.line(frame, (0, previous_ground_y), (w, previous_ground_y), (255, 255, 0), 2)
+
+            # Display frame in Streamlit
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # Convert frame to RGB
+            fall_detection_display.image(frame_rgb, channels="RGB") # Use st.image to display frame
+
+
+            # Exit condition - check for 'q' key press (OpenCV way)
+            if cv2.waitKey(1) & 0xFF == ord('q'): # Keep exit condition for webcam
+                break
+
+        cap.release() # Release capture when loop finishes
+        pose.close() # Close pose estimation
+        st.success("Fall Detection Stopped.") # Indicate stop in Streamlit
+
+# Footer (same as before)
+st.markdown("---")
+st.markdown("""
+<div style="text-align: center">
+    <p>Made with ❤️ using Streamlit and Google's Gemini AI</p>
+</div>
+""", unsafe_allow_html=True)
