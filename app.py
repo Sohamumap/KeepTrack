@@ -480,53 +480,61 @@ with tab4: # Find Item Tab - Same as before
     elif find_button and not st.session_state.processed_video:
         location_output.warning("Please upload and process a video first in the 'Upload & Process' tab before using 'Find Item'.") # Display warning in container
 
-with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
+with tab5:  # Fall Alert Tab
     st.header("Fall Alert System")
     st.markdown("Click 'Start Fall Detection' to activate real-time fall monitoring using your webcam.")
 
-    fall_detection_start = st.button("Start Fall Detection", use_container_width=True)
+    # Add a stop button
+    stop_detection = st.button("Stop Fall Detection", key="stop_fall_detection")
+    
+    fall_detection_start = st.button("Start Fall Detection", use_container_width=True, key="start_fall_detection")
     fall_detection_display = st.empty()  # Placeholder to display video frames
 
-    if fall_detection_start:
-        st.markdown("### Fall Detection Activated")
-        st.markdown("Monitoring for falls... Press 'q' on the video frame to stop.")
+    # Flag to control detection loop
+    if 'detection_active' not in st.session_state:
+        st.session_state.detection_active = False
 
-        # Initialize MediaPipe Pose (moved inside tab for clarity)
+    if fall_detection_start:
+        st.session_state.detection_active = True
+
+    if stop_detection:
+        st.session_state.detection_active = False
+
+    if st.session_state.detection_active:
+        # Initialize MediaPipe Pose
         mp_pose = mp.solutions.pose
-        mp_drawing = mp.solutions.drawing_utils
         pose = mp_pose.Pose()
 
-        # Video capture - using webcam (0) - you might need to adjust index if you have multiple cameras
-        cap = cv2.VideoCapture(0) # Webcam capture here, inside the tab
+        # Video capture
+        cap = cv2.VideoCapture(0)
 
-        # Parameters (Fall detection parameters - same as before)
+        # Parameters
         GROUND_SMOOTHING = 0.9
         FALL_THRESHOLD = 0.35
         ANGLE_THRESHOLD = 35
         FALL_DURATION = 1.5
         STILL_FALL_DURATION = 5
         NO_MOVEMENT_DURATION = 3
-        ALERT_SOUND = "alert.mp3" # Ensure 'alert.mp3' is in the same directory or provide full path
         SITTING_ANGLE_THRESHOLD = 60
 
-        # Tracking variables (Fall detection tracking variables - same as before)
+        # Tracking variables
         previous_ground_y = None
         fall_start_time = None
         still_fall_start_time = None
         no_movement_start_time = None
         fall_detected = False
-        previous_torso_y = None
 
-        # Removed play_alert_sound function - no sound alerts in this version
-
-        while cap.isOpened(): # Fall detection loop - adapted for Streamlit
+        # Detection loop
+        while st.session_state.detection_active and cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 st.warning("Error reading video feed. Please check your webcam.")
                 break
 
-            # Fall detection processing (rest of the fall detection loop code - same as before, mostly)
+            # Convert frame to RGB
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Perform pose detection
             result = pose.process(rgb_frame)
             h, w, _ = frame.shape
 
@@ -534,7 +542,6 @@ with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
             keypoints_on_ground = 0
             total_keypoints = 0
             torso_angle = None
-            torso_speed = 0
 
             if result.pose_landmarks:
                 landmarks = result.pose_landmarks.landmark
@@ -554,8 +561,6 @@ with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
                 # Get torso keypoints
                 left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value]
                 right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value]
-                left_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP.value]
-                right_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value]
 
                 # Calculate torso angle
                 dx = (right_shoulder.x - left_shoulder.x) * w
@@ -577,61 +582,50 @@ with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
                 is_lying_down = torso_angle is not None and torso_angle < ANGLE_THRESHOLD
                 is_sitting = torso_angle is not None and torso_angle > SITTING_ANGLE_THRESHOLD
 
-                # Debugging prints - uncomment for troubleshooting
-                # print(f"Torso Angle: {torso_angle}, Keypoints on Ground Ratio: {keypoints_on_ground / total_keypoints}, Lying Down: {is_lying_down}, Sitting: {is_sitting}")
-
-
                 # Detect fall based on motion and position (excluding sitting)
                 if keypoints_on_ground / total_keypoints > FALL_THRESHOLD and is_lying_down and not is_sitting:
                     if not fall_detected:
                         fall_start_time = time.time()
                         fall_detected = True
-                        print("Fall Detection Started") # Debug print
                     elif time.time() - fall_start_time >= FALL_DURATION:
                         cv2.putText(frame, "FALL DETECTED!", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
-                        print("FALL DETECTED! - Visual Alert") # Debug print
-
+                        st.warning("FALL DETECTED!")  # Streamlit warning
 
                 # If a person has already fallen and remains still
                 elif fall_detected and is_lying_down:
                     if still_fall_start_time is None:
                         still_fall_start_time = time.time()
-                        print("Still Fall Timer Started") # Debug print
                     elif time.time() - still_fall_start_time >= STILL_FALL_DURATION:
                         cv2.putText(frame, "PERSON STILL LYING DOWN!", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
-                        print("PERSON STILL LYING DOWN! - Visual Alert") # Debug print
-
-
+                        st.warning("PERSON STILL LYING DOWN!")
+                    
                     # Detect no movement after falling
                     if no_movement_start_time is None:
                         no_movement_start_time = time.time()
-                        print("No Movement Timer Started") # Debug print
                     elif time.time() - no_movement_start_time >= NO_MOVEMENT_DURATION:
                         cv2.putText(frame, "NO MOVEMENT DETECTED!", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
-                        print("NO MOVEMENT DETECTED! - Visual Alert") # Debug print
+                        st.warning("NO MOVEMENT DETECTED!")
                 else:
                     fall_detected = False
                     fall_start_time = None
                     still_fall_start_time = None
                     no_movement_start_time = None
-                    # print("No Fall Detected - Resetting Timers") # Debug print - can be verbose
 
-
-            # Draw ground reference
-            cv2.line(frame, (0, previous_ground_y), (w, previous_ground_y), (255, 255, 0), 2)
+                # Draw ground reference
+                cv2.line(frame, (0, previous_ground_y), (w, previous_ground_y), (255, 255, 0), 2)
 
             # Display frame in Streamlit
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # Convert frame to RGB
-            fall_detection_display.image(frame_rgb, channels="RGB") # Use st.image to display frame
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            fall_detection_display.image(frame_rgb, channels="RGB")
 
+            # Add a small delay to prevent overwhelming the CPU
+            time.sleep(0.1)
 
-            # Exit condition - check for 'q' key press (OpenCV way)
-            if cv2.waitKey(1) & 0xFF == ord('q'): # Keep exit condition for webcam
-                break
-
-        cap.release() # Release capture when loop finishes
-        pose.close() # Close pose estimation
-        st.success("Fall Detection Stopped.") # Indicate stop in Streamlit
+        # Cleanup
+        cap.release()
+        pose.close()
+        st.session_state.detection_active = False
+        st.success("Fall Detection Stopped.")
 
 
         # Footer
