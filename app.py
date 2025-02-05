@@ -642,32 +642,30 @@ with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
         </div>
         """, unsafe_allow_html=True)
 
-**After copying and pasting this code:**
+        # --- INSTRUCTIONS COMMENTED OUT BELOW ---
+        # **To use this code:**
+        # 1. **Copy the entire code block above.**
+        # 2. **Replace the content of your `app.py` file** in your Streamlit project with this copied code.
+        # 3. **Ensure `playsound` is removed from your `requirements.txt` file** (as per the previous instructions).
+        # 4. **Commit and push your changes** to your Git repository.
+        # 5. **Streamlit Cloud will automatically redeploy your app.**
 
-1.  **Save `app.py`**.
-2.  **Commit and push** your changes to your Git repository.
-3.  **Streamlit Cloud will redeploy**.
-4.  **Test the Fall Alert Tab again.**
-
-**If it's still not working, please check the following and provide more details:**
-
-*   **Webcam Permissions:** Make sure your browser is allowing webcam access for your Streamlit app. You might need to check your browser settings.
-*   **Browser Console:** Open your browser's developer console (right-click on the page, "Inspect" or "Inspect Element", then go to "Console"). Are there any errors or warnings showing up there, especially when you start fall detection?
-*   **Debug Prints:** The code now includes `print()` statements in the Fall Alert tab. When you run the Fall Detection, check the Streamlit logs (or your local terminal if running locally) for the output of these `print()` statements. This will help understand if the fall detection logic is being triggered and what values are being calculated. Share these debug print outputs if you are still having issues.
-*   **Simplified Test (If still failing):** If even with the debug prints, you can't figure out the issue, try a very simplified test.  Replace the entire `while cap.isOpened():` loop in the Fall Alert tab with just these lines:
-
-    ```python
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            st.warning("Error reading video feed. Please check your webcam.")
-            break
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        fall_detection_display.image(frame_rgb, channels="RGB")
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-    ```
-
-    This simplified loop *only* displays the webcam feed without any pose estimation. If this works and you see your webcam video in the Streamlit app, then the issue is likely in the MediaPipe pose estimation or fall detection logic. If even this simplified test doesn't show the webcam feed, then the problem is with webcam access or OpenCV's `VideoCapture(0)`.
-
-By following these steps and providing more details if you're still facing problems, we can further diagnose and fix the Fall Alert functionality.
+        # **If it's still not working, please check the following and provide more details:**
+        #     *   **Webcam Permissions:** Make sure your browser is allowing webcam access for your Streamlit app. You might need to check your browser settings.
+        #     *   **Browser Console:** Open your browser's developer console (right-click on the page, "Inspect" or "Inspect Element", then go to "Console"). Are there any errors or warnings showing up there, especially when you start fall detection?
+        #     *   **Debug Prints:** The code now includes `print()` statements in the Fall Alert tab. When you run the Fall Detection, check the Streamlit logs (or your local terminal if running locally) for the output of these `print()` statements. This will help understand if the fall detection logic is being triggered and what values are being calculated. Share these debug print outputs if you are still having issues.
+        #     *   **Simplified Test (If still failing):** If even with the debug prints, you can't figure out the issue, try a very simplified test.  Replace the entire `while cap.isOpened():` loop in the Fall Alert tab with just these lines:
+        #
+        #         ```python
+        #         while cap.isOpened():
+        #             ret, frame = cap.read()
+        #             if not ret:
+        #                 st.warning("Error reading video feed. Please check your webcam.")
+        #                 break
+        #             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        #             fall_detection_display.image(frame_rgb, channels="RGB")
+        #             if cv2.waitKey(1) & 0xFF == ord('q'):
+        #                 break
+        #         ```
+        #
+        #         This simplified loop *only* displays the webcam feed without any pose estimation. If this works and you see your webcam video in the Streamlit app, then the issue is likely in the MediaPipe pose estimation or fall detection logic. If even this simplified test doesn't show the webcam feed, then the problem is with webcam access or OpenCV's `VideoCapture(0)`.
