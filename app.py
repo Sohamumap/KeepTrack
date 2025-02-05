@@ -517,15 +517,7 @@ with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
         fall_detected = False
         previous_torso_y = None
 
-
-        # Removed play_alert_sound function
-        # def play_alert_sound(): # Fall Alert sound function - same as before
-        #     """Plays an alert sound in a separate thread."""
-        #     try:
-        #         playsound.playsound(ALERT_SOUND)
-        #     except Exception as e:
-        #         print("Sound error:", e)
-
+        # Removed play_alert_sound function - no sound alerts in this version
 
         while cap.isOpened(): # Fall detection loop - adapted for Streamlit
             ret, frame = cap.read()
@@ -585,37 +577,45 @@ with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
                 is_lying_down = torso_angle is not None and torso_angle < ANGLE_THRESHOLD
                 is_sitting = torso_angle is not None and torso_angle > SITTING_ANGLE_THRESHOLD
 
+                # Debugging prints - uncomment for troubleshooting
+                # print(f"Torso Angle: {torso_angle}, Keypoints on Ground Ratio: {keypoints_on_ground / total_keypoints}, Lying Down: {is_lying_down}, Sitting: {is_sitting}")
+
+
                 # Detect fall based on motion and position (excluding sitting)
                 if keypoints_on_ground / total_keypoints > FALL_THRESHOLD and is_lying_down and not is_sitting:
                     if not fall_detected:
                         fall_start_time = time.time()
                         fall_detected = True
+                        print("Fall Detection Started") # Debug print
                     elif time.time() - fall_start_time >= FALL_DURATION:
                         cv2.putText(frame, "FALL DETECTED!", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
-                        # Removed sound alert call
-                        # threading.Thread(target=play_alert_sound, daemon=True).start()
+                        print("FALL DETECTED! - Visual Alert") # Debug print
+
 
                 # If a person has already fallen and remains still
                 elif fall_detected and is_lying_down:
                     if still_fall_start_time is None:
                         still_fall_start_time = time.time()
+                        print("Still Fall Timer Started") # Debug print
                     elif time.time() - still_fall_start_time >= STILL_FALL_DURATION:
                         cv2.putText(frame, "PERSON STILL LYING DOWN!", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
-                        # Removed sound alert call
-                        # threading.Thread(target=play_alert_sound, daemon=True).start()
+                        print("PERSON STILL LYING DOWN! - Visual Alert") # Debug print
+
 
                     # Detect no movement after falling
                     if no_movement_start_time is None:
                         no_movement_start_time = time.time()
+                        print("No Movement Timer Started") # Debug print
                     elif time.time() - no_movement_start_time >= NO_MOVEMENT_DURATION:
                         cv2.putText(frame, "NO MOVEMENT DETECTED!", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
-                        # Removed sound alert call
-                        # threading.Thread(target=play_alert_sound, daemon=True).start()
+                        print("NO MOVEMENT DETECTED! - Visual Alert") # Debug print
                 else:
                     fall_detected = False
                     fall_start_time = None
                     still_fall_start_time = None
                     no_movement_start_time = None
+                    # print("No Fall Detected - Resetting Timers") # Debug print - can be verbose
+
 
             # Draw ground reference
             cv2.line(frame, (0, previous_ground_y), (w, previous_ground_y), (255, 255, 0), 2)
@@ -641,3 +641,33 @@ with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
             <p>Made with ❤️ using Streamlit and Google's Gemini AI</p>
         </div>
         """, unsafe_allow_html=True)
+
+**After copying and pasting this code:**
+
+1.  **Save `app.py`**.
+2.  **Commit and push** your changes to your Git repository.
+3.  **Streamlit Cloud will redeploy**.
+4.  **Test the Fall Alert Tab again.**
+
+**If it's still not working, please check the following and provide more details:**
+
+*   **Webcam Permissions:** Make sure your browser is allowing webcam access for your Streamlit app. You might need to check your browser settings.
+*   **Browser Console:** Open your browser's developer console (right-click on the page, "Inspect" or "Inspect Element", then go to "Console"). Are there any errors or warnings showing up there, especially when you start fall detection?
+*   **Debug Prints:** The code now includes `print()` statements in the Fall Alert tab. When you run the Fall Detection, check the Streamlit logs (or your local terminal if running locally) for the output of these `print()` statements. This will help understand if the fall detection logic is being triggered and what values are being calculated. Share these debug print outputs if you are still having issues.
+*   **Simplified Test (If still failing):** If even with the debug prints, you can't figure out the issue, try a very simplified test.  Replace the entire `while cap.isOpened():` loop in the Fall Alert tab with just these lines:
+
+    ```python
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            st.warning("Error reading video feed. Please check your webcam.")
+            break
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        fall_detection_display.image(frame_rgb, channels="RGB")
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    ```
+
+    This simplified loop *only* displays the webcam feed without any pose estimation. If this works and you see your webcam video in the Streamlit app, then the issue is likely in the MediaPipe pose estimation or fall detection logic. If even this simplified test doesn't show the webcam feed, then the problem is with webcam access or OpenCV's `VideoCapture(0)`.
+
+By following these steps and providing more details if you're still facing problems, we can further diagnose and fix the Fall Alert functionality.
