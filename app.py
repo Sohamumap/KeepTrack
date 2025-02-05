@@ -10,7 +10,7 @@ import io
 import pyttsx3  # Import the text-to-speech library
 import mediapipe as mp
 import numpy as np
-import playsound
+# import playsound # Removed playsound import
 import threading
 
 # Configure page
@@ -79,9 +79,10 @@ This app helps you create an inventory of items from a video walkthrough of your
 
 ### New Fall Alert Feature:
 - 🚨 Real-time Fall Detection using webcam
-- 🔔 Audio and visual alerts upon fall detection
+- 🔔 Visual alerts upon fall detection (Sound alert removed for web deployment)
 - 🛡️ Proactive safety monitoring for homes and care environments
 
+**Note:** Sound alerts for Fall Detection have been removed for better compatibility with web deployment environments. Fall detection will now rely on visual cues on the video frame.
 """)
 
 # Sidebar for API key and configuration (same as before)
@@ -476,7 +477,7 @@ with tab4: # Find Item Tab - Same as before
             location_output.error(f"Error finding item location: {str(e)}") # Display error in container
             location_output.error(f"Please make sure your API key is valid and try again. Error details: {e}") # Display error in container
 
-    elif find_button and not st.session_state.processed_video: # **LINE 478 - COLON IS HERE - PLEASE CHECK CAREFULLY**
+    elif find_button and not st.session_state.processed_video:
         location_output.warning("Please upload and process a video first in the 'Upload & Process' tab before using 'Find Item'.") # Display warning in container
 
 with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
@@ -517,12 +518,13 @@ with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
         previous_torso_y = None
 
 
-        def play_alert_sound(): # Fall Alert sound function - same as before
-            """Plays an alert sound in a separate thread."""
-            try:
-                playsound.playsound(ALERT_SOUND)
-            except Exception as e:
-                print("Sound error:", e)
+        # Removed play_alert_sound function
+        # def play_alert_sound(): # Fall Alert sound function - same as before
+        #     """Plays an alert sound in a separate thread."""
+        #     try:
+        #         playsound.playsound(ALERT_SOUND)
+        #     except Exception as e:
+        #         print("Sound error:", e)
 
 
         while cap.isOpened(): # Fall detection loop - adapted for Streamlit
@@ -590,7 +592,8 @@ with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
                         fall_detected = True
                     elif time.time() - fall_start_time >= FALL_DURATION:
                         cv2.putText(frame, "FALL DETECTED!", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
-                        threading.Thread(target=play_alert_sound, daemon=True).start()
+                        # Removed sound alert call
+                        # threading.Thread(target=play_alert_sound, daemon=True).start()
 
                 # If a person has already fallen and remains still
                 elif fall_detected and is_lying_down:
@@ -598,14 +601,16 @@ with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
                         still_fall_start_time = time.time()
                     elif time.time() - still_fall_start_time >= STILL_FALL_DURATION:
                         cv2.putText(frame, "PERSON STILL LYING DOWN!", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
-                        threading.Thread(target=play_alert_sound, daemon=True).start()
+                        # Removed sound alert call
+                        # threading.Thread(target=play_alert_sound, daemon=True).start()
 
                     # Detect no movement after falling
                     if no_movement_start_time is None:
                         no_movement_start_time = time.time()
                     elif time.time() - no_movement_start_time >= NO_MOVEMENT_DURATION:
                         cv2.putText(frame, "NO MOVEMENT DETECTED!", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
-                        threading.Thread(target=play_alert_sound, daemon=True).start()
+                        # Removed sound alert call
+                        # threading.Thread(target=play_alert_sound, daemon=True).start()
                 else:
                     fall_detected = False
                     fall_start_time = None
