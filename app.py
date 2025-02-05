@@ -10,7 +10,7 @@ import io
 import pyttsx3
 import mediapipe as mp
 import numpy as np
-# import playsound  # Removed playsound import for Streamlit Cloud - Use for local if needed
+# import playsound  # Removed playsound import for Streamlit Cloud - Uncomment for local if needed
 import threading
 
 # Configure page
@@ -162,7 +162,33 @@ with tab1:
                            time.sleep(1);
                            videoStatus = genai.get_file(video_file.name);
 
-                        prompt = """You are an expert home inventory logger and home insurance reviewer... (rest of your prompt)""" # Put your Gemini prompt here
+                        prompt = """You are an expert home inventory logger and home insurance reviewer. Your task is to catalog household items from a smartphone recorded video for home and contents insurance purposes.
+                                Your goal is to create a comprehensive and accurate inventory of all items visible or mentioned in the attached video. **Crucially, you must also estimate a reasonable market value in US dollars for each item.**
+
+                                I want you to create a CSV file with the following columns/schema.
+                                item_number,item_name,category,description,value,condition,room
+
+                                Follow these instructions:
+                                1. Create a single line in the CSV for every unique item in the video.
+                                2. For multiple identical items (e.g. 3 of the same chair or 4 of the same speaker), update the number_of_items field instead of creating separate entries. Use integer values to indicate their counts. Count as best you can.
+                                3. Use simple but understandable descriptions for each item.
+                                4. If an item is similar to another item in the inventory, note this in the is_similar_to field.
+                                5. Make sure there are no blank fields, if something needs to be blank, fill it with NA.
+                                 6. Ensure every column has a value, do not miss a column.
+                                **7. For the 'value' column, estimate a reasonable resale or market value in US dollars for each item. Provide a numerical value only, do not include currency symbols or commas.** If you cannot reasonably estimate a value, put 0.
+
+                                CSV Formatting Instructions:
+                                    - Use commas only to separate fields rather than inside fileds.
+                                    - Do not use commas in the item_description field.
+                                    - For fields that inherently include commas, enclose the entire value in double quotes (`\"`).
+                                    - If double quotes appear within a field value, escape them by doubling them (`\"\"`). For example, `John \"JJ\" Smith` should be written as `\"John \"\"JJ\"\" Smith\"`.\
+                                    - Do not use any unescaped double quotes or other special characters that may cause the CSV to be invalid.
+                                    - Never use commas in prices. For example, $1500.0 = good, $1,500.0 = bad.
+                                     - Return all columns in the order they are presented in.
+
+                                Return the full and valid CSV within <csv> tags so it can be easily parsed out.
+                                  Include a note to yourself in <other_details_to_note> if you think there are more items to continue doing in the video, this should be inline with the <item_logging_status> as well as the next steps to improve upon the record keeping.
+                        """
 
                         progress_bar = st.progress(0)
                         progress_text = st.empty()
@@ -173,18 +199,23 @@ with tab1:
 
                         progress_text.text("Extracting inventory data...")
                         progress_bar.progress(50)
-                        print(f"Raw Gemini Response (Inventory Tab - Upload & Process): {response.text}")
+                        print(f"Raw Gemini Response (Inventory Tab - Upload & Process): {response.text}") # Debug print of raw response
 
                         csv_data = None
                         try:
-                            if "<csv>" in response.text and "</csv>" in response.text:
-                                csv_data = response.text.split("<csv>")[1].split("</csv>")[0].strip()
+                            # More robust CSV extraction: strip whitespace around tags
+                            if "<csv>" in response.text.strip() and "</csv>" in response.text.strip():
+                                csv_data = response.text.strip().split("<csv>")[1].split("</csv>")[0].strip()
                             else:
-                                st.error("Error: Could not find CSV data in the AI response.")
+                                st.error("Error: Could not find CSV data in the AI response. **Please check the Raw Gemini Response in the logs to see what the AI is returning.**")
                                 csv_data = None
-                        except IndexError:
-                            st.error("Error processing AI response: CSV data extraction failed.")
+                        except IndexError as e:
+                            st.error(f"Error processing AI response: CSV data extraction failed (IndexError). The response format might be incorrect. **Please check the Raw Gemini Response in the logs.** Error details: {e}")
                             csv_data = None
+                        except Exception as e: # Catch any other potential errors during CSV extraction
+                            st.error(f"Error processing AI response: CSV data extraction failed (General Error). **Please check the Raw Gemini Response in the logs.** Error details: {e}")
+                            csv_data = None
+
 
                         print(f"Cleaned CSV Data (Inventory Tab - Upload & Process): {csv_data}")
 
@@ -197,7 +228,7 @@ with tab1:
                                 df = pd.DataFrame(records)
                                 st.session_state.inventory_df = df
                             except Exception as csv_parse_error:
-                                st.error(f"Error parsing CSV data: {csv_parse_error}")
+                                st.error(f"Error parsing CSV data into DataFrame: {csv_parse_error}. **The CSV data from the AI might be malformed. Please check the Cleaned CSV Data output in the logs.**")
                                 st.error("CSV data from AI might be malformed.")
                                 st.stop()
 
@@ -227,7 +258,7 @@ with tab1:
             except Exception as e:
                 st.error(f"Error handling file: {str(e)}")
 
-# Tab 2: Inventory
+# Tab 2: Inventory (No changes needed here - using the corrected code from previous response)
 with tab2:
     st.header("Inventory")
     if st.session_state.inventory_df is not None:
@@ -299,7 +330,7 @@ with tab2:
             room_values = edited_df.groupby('room')['value'].sum().sort_values(ascending=True)
             st.bar_chart(room_values)
 
-# Tab 3: Frames
+# Tab 3: Frames (No changes needed)
 with tab3:
     st.header("Video Frames")
     if st.session_state.frames:
@@ -321,7 +352,7 @@ with tab3:
     else:
       st.text("No frames were extracted from video.")
 
-# Tab 4: Find Item
+# Tab 4: Find Item (No changes needed)
 with tab4:
     st.header("Find Item Location")
     st.markdown("Enter the name of the item you are looking for...")
@@ -362,7 +393,7 @@ with tab4:
     elif find_button and not st.session_state.processed_video:
         location_output.warning("Please upload and process a video first...")
 
-# Tab 5: Fall Alert
+# Tab 5: Fall Alert (No changes needed - using the corrected code from previous response)
 with tab5:
     st.header("Fall Alert System")
     st.markdown("Click 'Start Fall Detection' to activate real-time fall monitoring using your webcam.")
@@ -502,3 +533,16 @@ st.markdown("""
     <p>Made with ❤️ using Streamlit and Google's Gemini AI</p>
 </div>
 """, unsafe_allow_html=True)
+
+
+# **IMPORTANT! If you still see "Error: Could not find CSV data in the AI response":**
+
+# 1. **PLEASE PROVIDE THE RAW GEMINI RESPONSE TEXT.**
+#    - If running on Streamlit Cloud, get it from the "Logs" (as explained in the previous detailed response).
+#    - If running locally, copy it from your terminal output.
+
+# 2. **Double-check your Gemini API key.**
+
+# 3. **Verify your video file:** Ensure it is a valid video file (MP4, MOV, AVI) and not corrupted. Try a different video to see if the issue persists.
+
+# Once you provide the Raw Gemini Response, I can give you more specific guidance.**
