@@ -475,7 +475,7 @@ with tab4: # Find Item Tab - Same as before
                 except Exception as e:
                     location_output.error(f"Error finding item location: {str(e)}") # Display error in container
                     location_output.error(f"Please make sure your API key is valid and try again. Error details: {e}") # Display error in container
-            elif find_button and not st.session_state.processed_video:
+            elif find_button and not st.session_state.processed_video :
                 location_output.warning("Please upload and process a video first in the 'Upload & Process' tab before using 'Find Item'.") # Display warning in container
 
 with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
