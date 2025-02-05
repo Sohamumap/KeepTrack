@@ -664,4 +664,3 @@ with tab5:  # Fall Alert Tab
         #
         #         This simplified loop *only* displays the webcam feed without any pose estimation. If this works and you see your webcam video in the Streamlit app, then the issue is likely in the MediaPipe pose estimation or fall detection logic. If even this simplified test doesn't show the webcam feed, then the problem is with webcam access or OpenCV's `VideoCapture(0)`.
 
-it's showing the error as mentioned in the log please help me solve this error
