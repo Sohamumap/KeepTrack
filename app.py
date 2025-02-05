@@ -21,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Helper to parse CSV (same as before)
+# Helper to parse CSV
 def parse_csv_with_fixed_columns(csv_string, expected_columns):
     """
     Parses a CSV string, handling irregularities, and returns a list of records.
@@ -202,7 +202,7 @@ with tab1: # Upload & Process Tab - Same as before
                                     - Use commas only to separate fields rather than inside fileds.
                                     - Do not use commas in the item_description field.
                                     - For fields that inherently include commas, enclose the entire value in double quotes (`\"`).
-                                    - If double quotes appear within a field value, escape them by doubling them (`\"\"`). For example, `John \"JJ\" Smith` should be written as `\"John \"\"JJ\"\" Smith\"`.
+                                    - If double quotes appear within a field value, escape them by doubling them (`\"\"`). For example, `John \"JJ\" Smith` should be written as `\"John \"\"JJ\"\" Smith\"`.\
                                     - Do not use any unescaped double quotes or other special characters that may cause the CSV to be invalid.
                                     - Never use commas in prices. For example, $1500.0 = good, $1,500.0 = bad.
                                      - Return all columns in the order they are presented in.
@@ -475,7 +475,7 @@ with tab4: # Find Item Tab - Same as before
                 except Exception as e:
                     location_output.error(f"Error finding item location: {str(e)}") # Display error in container
                     location_output.error(f"Please make sure your API key is valid and try again. Error details: {e}") # Display error in container
-            elif find_button and not st.session_state.processed_video :
+            elif find_button and not st.session_state.processed_video: # **LINE 478 - COLON IS HERE - PLEASE CHECK CAREFULLY**
                 location_output.warning("Please upload and process a video first in the 'Upload & Process' tab before using 'Find Item'.") # Display warning in container
 
 with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
@@ -574,7 +574,7 @@ with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
                     total_keypoints += 1
                     if y >= previous_ground_y:
                         keypoints_on_ground += 1
-                        cv2.circle(frame, (x, y), 6, (0, 0, 255), -1)  # Red for ground contact
+                        cv2.circle(frame, (x, y), 6, (0, 0, 255), 3)  # Red for ground contact
                     else:
                         cv2.circle(frame, (x, y), 6, (0, 255, 0), -1)  # Green for normal keypoints
 
@@ -627,10 +627,11 @@ with tab5: # Fall Alert Tab - NEW TAB with Fall Detection code
         pose.close() # Close pose estimation
         st.success("Fall Detection Stopped.") # Indicate stop in Streamlit
 
-# Footer (same as before)
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center">
-    <p>Made with ❤️ using Streamlit and Google's Gemini AI</p>
-</div>
-""", unsafe_allow_html=True)
+
+        # Footer
+        st.markdown("---")
+        st.markdown("""
+        <div style="text-align: center">
+            <p>Made with ❤️ using Streamlit and Google's Gemini AI</p>
+        </div>
+        """, unsafe_allow_html=True)
